@@ -1,6 +1,6 @@
 *.sublime-workspace
 *.sublime-project
-molefrog_thesis
+*.pdf
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
