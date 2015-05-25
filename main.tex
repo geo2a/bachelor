@@ -246,15 +246,83 @@ No instance for (MonadReader Int (ReaderT String (Reader Int)))
 Синтаксис для работы с эффектами построен по аналогии с синтаксисом для трансфомеров монад и код, написанный с их использованием, может быть переведённый на расширяемые эффекты с минимальными синтаксическими изменениями.  
 \end{itemize} 
 
+Есть два способа обозначить принадлежность эффекта \lstinline{m} открытому объединению \lstinline{r}. С помощью типового ограничения \lstinline{Member m r}, которое означает, что вычисления имеет \emph{по крайней мере} один побочный эффект \lstinline{m}. Иначе, можно явно указать шаблон \lstinline{m :> r'} разложения набора \lstinline{r} на эффект \lstinline{m} и оставшийся набор \lstinline{r'}, что аналогично теоретико-множественному обозначению $\{$\lstinline{m}$\}$ $\cup$ \lstinline{r'}. Тип \lstinline{Void} играет роль $\varnothing$, то есть вычисление с типом \lstinline{Eff Void a} является чистым, а вычисления с типом \lstinline{Eff (Reader Int :> Reader Bool :> Void)} может иметь побочный эффект обращения к двум средам конфигурационной информации.
+
+Авторами также подмечается, что ограничение \lstinline{Member (Reader Int) r} выглядит похоже на ограничение принадлежности классу типов \lstinline{MonadReader}, более того, возможно объявить экземпляр этого класса для монады \lstinline{Eff r}. Однако в этом нет необходимости, так как тип \lstinline{Eff r} является более выразительным: в листинге \ref{listing:extEff2Readers} приводится пример работы с функцией, имеющей два эффекта \lstinline{Reader}. Эта функция демонстрирует одно из преимуществ расширяемых эффектов перед трансформерами монад: пропадает необходимость явного вызова функции \lstinline{lift}, которую можно наблюдать в листингах \ref{listing:mtlReadersLift} и \ref{listing:mtlDifferentReadersLift}. Каждое вхождение функции \lstinline{ask} обращается к своей собственной среде, определяемой типом. 
+
+\begin{figure}[t]
+\begin{lstlisting}
+adder :: (Member (Reader Int) r
+      ,   Member (Reader String) r) 
+      =>  Eff r Int
+adder = do
+  num <- ask
+  str <- ask
+  return $ num + read str
+
+runAdder = run $ runReader (runReader adder "2") (1 :: Int)
+\end{lstlisting}
+\caption{Пример функции с двумя средами конфигурации.}
+\label{listing:extEff2Readers}
+\end{figure} 
+
+Другое важным отличие расширяемых эффектов от трансформеров монад --- неупорядоченность набора эффектов до запуска вычисления --- никак не проявило себя в примере из листинга \ref{listing:extEff2Readers}, потому что были использованы одинаковые эффекты. В листинге \ref{listing:extEffOrdering} рассмотрен синтетический (для краткости) пример, демонстрирующий динамическую установку порядка на множестве эффектов. Функция из примера считает до нуля и завершается с исключением. Если запускать вычисление в порядке, представленном в \lstinline{runCountdown1}, то результатом будет служить \lstinline{Nothing}, сообщающий об исключении. При запуске в порядке \lstinline{runCountdown2}, результатом будет пара \lstinline{(0,Nothing)} из последнего состояния и сообщения об исключении.      
+
+\begin{figure}[t]
+\begin{lstlisting}
+finalCoutdown :: (Member Fail r
+              ,  Member (State Int) r)
+              =>  Eff r ()
+finalCoutdown = do
+  state <- get
+  if state == (0 :: Int) 
+  then die
+  else put (state - 1) >> finalCoutdown 
+
+runCountdown1 n = run $ runFail $ runState (n :: Int) $ finalCoutdown
+
+runCountdown2 n = run $ runState (n :: Int) $ runFail $ finalCoutdown
+\end{lstlisting}
+\caption{Порядок на множестве эффектов определяется динамически}
+\label{listing:extEffOrdering}
+\end{figure} 
+
 \subsubsection{Пример использования}
 
-Привести ссылку на репозиторий.
+В этом подразделе будет рассмотрены некоторые составные части системной утилиты, написанной с использованием библиотеки \lstinline{Extensible Effects}. Задача этой утилиты --- отслеживание изменений содержимого некоторой директории и выполнение заданных сценариев командной оболочки в качестве реакции на эти изменения. Git-репозиторий с исходным кодом на языке \lstinline{Haskell} доступен по адресу \autocite{FileTrigger}. 
 
-В этом подразделе будет рассмотрены некоторые составные части системной утилиты, написанной с использованием библиотеки \lstinline{Extensible Effects}. Задача этой утилиты --- отслеживание изменений содержимого некоторой директории и выполнение заданных сценариев командной оболочки в качестве реакции на эти изменения. 
+На этапе проектирования приложения необходимо определить, какие вычислительные эффекты будут им порождаться. Рассматриваемая утилита будет работать с файловой системой, значит не обойтись без эффекта \lstinline{IO}, иметь внутреннее состояние --- необходим эффект \lstinline{State}, а также будет иметь конфигурационную информацию --- потребуется эффекта \lstinline{Reader}.
 
-На этапе проектирования приложения необходимо определить, какие вычислительные эффекты будут им порождаться. Рассматриваемая утилита будет работать с файловой системой, значит необходим эффект \lstinline{IO}, иметь внутреннее состояние --- необходим эффект \lstinline{State}, а также будет иметь конфигурационную информацию --- не обойтись без эффекта \lstinline{Reader}. 
+\begin{figure}[t]
+\begin{lstlisting}
+loop :: (Member (Reader AppConfig) r, 
+         Member (State AppState)   r, 
+         SetMember Lift (Lift IO)  r) => Eff r ()
+loop = do
+  cfg <- ask 
+  currentFilesList <- lift $ getFilesInfo $ directory cfg
+  handleCreate currentFilesList
+  lift $ threadDelay $ refreshRate cfg
+  curTime <- lift getCurrentTime
+  put $ (AppState currentFilesList curTime)
+  loop
+\end{lstlisting}
+\caption{Главный цикл приложения}
+\label{listing:ftMainLoop}
+\end{figure}
 
+В листинге \ref{listing:ftMainLoop} представлена упрощённая функция главного цикла программы, типовая аннотация отражает наличие в результирующем наборе эффектов \lstinline{r} трёх составляюших: \lstinline{Reader}, \lstinline{State} и \lstinline{IO}.
 
+Как уже говорилось ранее, порядок на наборе эффектов устанавливается в момент запуска вычисления, для чего служит функция из листинга \ref{listing:ftRun}.
+
+\begin{figure}[t]
+\begin{lstlisting}
+ runApp action cfg initState = 
+  runLift . runState initState . runReader action $ cfg
+\end{lstlisting}
+\caption{Обработка эффектов и запуск приложения}
+\label{listing:ftRun}
+\end{figure}
 
 \section{Монадические парсеры}
 
