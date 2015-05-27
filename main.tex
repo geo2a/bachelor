@@ -474,7 +474,48 @@ item = do s <- get
 \label{listing:ExtEffectsItem}
 \end{figure}
 
+На основе парсера \lstinline{item} строятся другие парсеры. В листинге \ref{listing:ExtEffectsSat} представлен парсер для символа, удовлетворяющего предикату. 
 
+\begin{figure}[h]
+\begin{lstlisting}
+sat :: (Member Fail r
+    ,   Member (State String) r) => (Char -> Bool) -> Eff r Char
+sat p = do x <- item
+           if p x then return x else die
+\end{lstlisting}
+\caption{Распознавание символа по предикату}
+\label{listing:ExtEffectsSat}
+\end{figure} 
+
+Набор эффектов парсера более высокого уровня не обязан ограничиваться эффектами парсера \lstinline{item}, в листинге \ref{listing:ExtEffectsMpus} представлен парсер для букв, определённый с помощью эффекта недетерминированного выбора, парсеры \lstinline{lower} и \lstinline{upper} определены через парсер \lstinline{sat}. Эффект \lstinline{Choose} предоставляет функции \lstinline{mzero'} и \lstinline{mplus'}, аналогичные интерфейсу класса типов \lstinline{MonadPlus}. Стандартном поведением для этих функций является недетерминированный выбор: результаты применения парсеров склеиваются в список.  
+
+\begin{figure}[t]
+\begin{lstlisting}
+letter :: (Member Fail r
+       ,   Member (State String) r
+       ,   Member (Choose) r) => Eff r Char
+letter = lower `mplus'` upper
+\end{lstlisting}
+\caption{Парсер с расширенным относительно \lstinline{item} набором эффектов}
+\label{listing:ExtEffectsMpus}
+\end{figure}
+
+Все заявленные эффекты должны быть обработаны. Библиотека парсеров, основанная на расширяемых эффектах, должна предоставлять соответсвуюющий набор функция для запуска вычислений. В листинге \ref{listing:ExtEffectsRunners} представлены две функции, позволяющие использовать описанные выше парсеры.
+
+\begin{figure}[t]
+\begin{lstlisting}
+parse p inp = run . runFail . runState inp $ p
+
+parseWithChoose p inp = -- filter isJust . 
+  run . runChoice . runFail . runState inp $ p 
+\end{lstlisting}
+\caption{Функции для запуска парсеров с разными наборами эффектов}
+\label{listing:ExtEffectsRunners}
+\end{figure}
+
+Построение библиотек монадических парсеров с использованием расширяемых эффектов имеет несколько иную специфику, чем с использованием трансформеров монад. С одной стороны, расширяемые эффекты предоставляют большую гибкость: каждый парсер имеет свой собственный набор эффектов. С другой стороны, механизм трансформеров монад имеет удобную поддержку со стороны компилятора \lstinline{GHC}, которая обеспечивает автоматическое порождение экземпляров нужных классов типов, таких как, например, \lstinline{MonadPlus}, \lstinline{Applicative} и \lstinline{Alternative}, что избавляет разработчика от необходимости описывать некоторые вспомогательные функции. Таким образом, концептуально расширяемые эффекты являются более интересным средством, но трансформеры монад удобнее для прикладного программирования.    
+
+\newpage
 
 \section{Реализация парсера языка Markdown} 
 
