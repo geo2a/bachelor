@@ -287,7 +287,7 @@ runCountdown2 n = run $ runState (n :: Int) $ runFail $ finalCoutdown
 \label{listing:extEffOrdering}
 \end{figure} 
 
-\subsubsection{Пример использования}
+\subsubsection{Пример прикладного использования}
 
 В этом подразделе будет рассмотрены некоторые составные части системной утилиты, написанной с использованием библиотеки \lstinline{Extensible Effects}. Задача этой утилиты --- отслеживание изменений содержимого некоторой директории и выполнение заданных сценариев командной оболочки в качестве реакции на эти изменения. Git-репозиторий с исходным кодом на языке \lstinline{Haskell} доступен по адресу \autocite{FileTrigger}. 
 
@@ -404,7 +404,77 @@ type Parser a = StateT String [] a
 
 Благодаря трансформерам монад к этому типу могут быть добавлены и другие вычислительные эффекты, такие как, например, конфигурационная информация и журнализация. Внутренняя монада может быть изменена: вместо списковой монады, описывающей недетерминированный парсер, можно использовать монаду~\lstinline{Maybe} или ~\lstinline{Either a} для получения парсера, выдающего сообщение об ошибке в случае неудачного разбора. Таким образом, благодаря трансформерам монад становится доступна такая гибкости управления типом парсера, достичь которой было бы тяжело при явном описании монады~\lstinline{Parser}.
 
+Монадический код имеет высокий уровень абстракции. Это приносит ценные практические плоды: код парсера, написанных для одного стека монад с высокой вероятностью может быть без изменений перенесён на другой стек. Принципиальных изменений требует только самый базовый парсер \lstinline{item}, который напрямую работает со структурой стека монад. В листингах \ref{listing:MonadTransItem1} и \ref{listing:MonadTransItem2} представлены примеры базового парсера для двух стеков монад: простого и более сложного, используемого в библиотеке для парсинга \lstinline{Markdown}, которая будет описана в следующем разделе.  
+
+\begin{figure}[t]
+\begin{lstlisting}
+type Parser a = StateT String [] a
+
+item :: Parser t Char
+item = do
+  state <- get
+  case state of
+    []     -> []
+    (x:xs) -> put xs >> return c  
+\end{lstlisting}
+\caption{Простой тип Parser}
+\label{listing:MonadTransItem1}
+\end{figure}
+
+\begin{figure}[t]
+\begin{lstlisting}
+newtype Parser t a = Parser (  
+    StateT (ParserState t) (Either (ErrorReport t)) a)
+
+item :: TM.TextualMonoid t => Parser t Char
+item = do
+  state  <- get
+  let s = TM.splitCharacterPrefix . remainder $ state
+  case s of 
+    Nothing -> throwError (EmptyRemainder "item",state)
+    Just (c,rest) -> do  
+      let (c,rest) = fromJust s
+      put (ParserState {position = updatePos (position state) c, remainder = rest})
+      return c
+\end{lstlisting}
+\caption{Парсер с поддержкой моноидального входного потока и отслеживанием ошибок}
+\label{listing:MonadTransItem2}
+\end{figure}
+
+\newpage
+
 \subsubsection{Подход с расширяемыми эффектами}
+
+Библиотека \lstinline{Extensible Effects} предоставляют по крайней мере два способа комбинирования вычислительных эффектов для описания монадических парсеров: явное статическое описание набора эффектов и указание эффектов в типе каждой функции парсера. 
+
+В первом подходе чувствуется влияние траснформеров монад, и он не позволяет воспользоваться всеми преимуществами расширяемых эффектов. В листинге \ref{listing:ExtEffectsParser} представлен тип для парсера со статическим набором эффектов и функция для обработки эффектов.
+
+\begin{figure}[h]
+\begin{lstlisting}
+type Parser a = Eff (Fail :> State String :> Void)
+
+parse p inp = run . runFail . runState inp $ p 
+\end{lstlisting}
+\caption{Тип Parser как статически заданный набор эффектов}
+\label{listing:ExtEffectsParser}
+\end{figure}
+
+Второй способ не подразумевает описание какого-либо специального типа для парсера. Каждая функция-парсер имеет свой собственный набор эффектов, ограниченный снизу набором эффектов базового парсера \lstinline{item} (листинг \ref{listing:ExtEffectsItem}).
+
+\begin{figure}[h]
+\begin{lstlisting}
+item :: (Member Fail r
+      ,  Member (State String) r) => Eff r Char
+item = do s <- get
+          case s of 
+            [] -> die
+            (x:xs) -> put xs >> return x 
+\end{lstlisting}
+\caption{Возможный вариант парсера \lstinline{item} и его эффекты}
+\label{listing:ExtEffectsItem}
+\end{figure}
+
+
 
 \section{Реализация парсера языка Markdown} 
 
