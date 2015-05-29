@@ -21,18 +21,11 @@
 \begin{document}
 
 \Intro
-В данной работе рассматривается задача синтаксического анализа
-файлов в формате Markdown с применением технологий функционального
-программирования. В качестве языка реализации используется Haskell.
-Синтаксический анализ текстов, таких как, например, исходные коды на языках программирования --- задача,поставленная ещё на самых ранних этапах развития информатики. Традиционные методы решения этой задачи, описанные, например, в книге~\autocite{DragonBook2}, используют императивный подход. 
+В работе рассматриваются технологии функционального программирования, предназначенные для описания вычислений с побочными эффектами, производится сравнение методов построения вычислений с несколькими побочными эффектами,и приводятся способы их использование для построения функциональных парсеров.   
 
 \section{Предварительные сведения}
 
-\subsection{Особенности императивного подхода}
-
-Что-то про императивный подход
-
-В этой работе используются методы функционального подхода к программированию, одними из основных достоинств которого является высокий уровень абстракции и большая информативность кода.
+\subsection{Синтаксический анализ: императивный и функциональный подходы}
 
 \subsection{Использованные в работе технологии фукционального программирования}
 
@@ -287,7 +280,9 @@ runCountdown2 n = run $ runState (n :: Int) $ runFail $ finalCoutdown
 \label{listing:extEffOrdering}
 \end{figure} 
 
-\subsubsection{Пример прикладного использования}
+Замечание о необходимых расширениях компилятора.
+
+\subsubsection{Пример практического использования}
 
 В этом подразделе будет рассмотрены некоторые составные части системной утилиты, написанной с использованием библиотеки \lstinline{Extensible Effects}. Задача этой утилиты --- отслеживание изменений содержимого некоторой директории и выполнение заданных сценариев командной оболочки в качестве реакции на эти изменения. Git-репозиторий с исходным кодом на языке \lstinline{Haskell} доступен по адресу \autocite{FileTrigger}. 
 
@@ -326,13 +321,13 @@ loop = do
 
 \section{Монадические парсеры}
 
-Большая часть содержимого этого раздела является вольным переводом статьи~\autocite{MonParsing}.
-
 В девяностые годы двадцатого века были опубликованы результаты исследований, обсуждающие монадичекую природу функциональных парсеров. Эта особенность парсеров приносит практические плоды: использование монадического комбинатора связывания позволяет удобно строить композиции парсеров. 
 
 Дальнейшее развитие монадического подхода к построению парсеров делает возможным выражение цельной монады для парсера в терминах более фундаментальных монад, что обеспечивает большую модульность архитектуры и позволяет варьировать семантику парсера за счёт изменения внутренней монады стека: создавать недетерменированные парсеры, парсеры, сигнализирующие о некорректности исходного текста, парсеры, генерирующие сообщения об ошибках.
 
-\subsection{Классический подход к построению монады Parser}
+\subsection{Классический подход к построению монады \lstinline{Parser}}
+
+Большая часть содержимого этого подраздела является изложением первого радела статьи~\autocite{MonParsing}.
 
 Функциональный стиль построения парсеров заключается в том, что парсер представляется функцией, которая принимает на вход строку символов и строит по ней некое абстрактное синтаксическое дерево. Удобно считать, что не каждый парсер полностью потребляет входную строку, это одно из условия для возможности построения результирующего парсера по кусочкам, из примитивных. Также необходимо иметь средства для обработки некорректного входа. Для этого существуют разные подходы: можно сообщать об ошибке разбора, либо заменять неудачу списком успехов~\autocite{WadlerSuccess}. Высказанные пожелания о характеристиках парсера могут быть отражены следующим типом языка Haskell: 
 
@@ -386,7 +381,7 @@ item =  Parser f
 
 В листинге~\ref{listing:ParserItem} представлен базовый парсер \lstinline{item}, его задача заключается в отделении одного символа от входной строки. Именно его реализация требует активной эксплуатации средств, определяемых конкретным типом, представляющим парсер. Это значит, что реализация парсера \lstinline{item} для цельной монады \lstinline{Parser} отличается от той, что будет уместна в случае использования средств комбинирования монад.
 
-\subsection{Построение монады Parser как комбинации более простых монад}
+\subsection{Построение монады \lstinline{Parser} как комбинации более простых монад}
 
 Рассмотренная в предыдущем подразделе монада \lstinline{Parser} не является едиснтвенным примером монады. В статье~\autocite{WadlerMonads} Philip Wadler приводит примеры типов, имеющих моноидальную структуру. В статье~\autocite{MonParsing} описан способ представить тип из листинга~\ref{listing:MonadParser} в виде комбинации монад~\lstinline{State} и ~\lstinline{[]}, для этого применяется механизм трансформеров монад. 
 
@@ -517,7 +512,182 @@ parseWithChoose p inp = -- filter isJust .
 
 \newpage
 
-\section{Реализация парсера языка Markdown} 
+\section{Функциональный парсер языка Markdown}
+
+Язык \lstinline{Markdown} --- легковесный язык разметки, применяется для быстрой вёрстки небольших документов. Полезен в случаях, когда нет необходимости привлекать такие тяжеловесные форматы как \lstinline{HTML} и \lstinline{LaTeX}. Популярен в интернете, к примеру, на известном хостинге программного кода \lstinline{GitHub}.
+
+\subsection{Синтаксис Markdown}
+
+В отличие от \lstinline{HTML} или \lstinline{XML}, \lstinline{Markdown} не имеет стандарта. Существует неформальное, но подробное описание базового синтаксиса~\autocite{MarkdownSyntax}, а также нескольких расширенных версий, в числе которых так называемый \lstinline{GitHub Flavored Markdown}.
+
+В реализуемом парсере рассматривается подмножество базового синтаксиса, включающее в себя заголовки, параграфы, неупорядоченные списки и блочные цитаты. Дополнительной возможностью являются вставки математических формул в формате \LaTeX.  
+
+\subsection{Реализация парсера}  
+
+Язык программирования \lstinline{Haskell} известен своей развитой системой типов. Аппарат алгебраических типов данных предоставляет удобные средства для представления абстрактного синтаксического дерева. Любой \lstinline{Markdown}-документ представляет собой список блоков. Блок представляется типом-суммой, конструкторы которого отражают рассматриваемое подмножество \lstinline{Markdown}. В листинге~\ref{listing:MarkdownADT} представлены типы, описывающие рассматриваемую грамматику.
+
+\begin{figure}[t]
+\begin{lstlisting}
+type Document = [Block]
+
+data Block = Blank
+           | Header (Int,Line)
+           | Paragraph [Line]
+           | UnorderedList [Line]
+           | BlockQuote [Line]
+  deriving (Show,Eq)
+
+data Line = Empty | NonEmpty [Inline]
+  deriving (Show,Eq)
+
+data Inline = Plain String
+            | Bold String
+            | Italic String
+            | Monospace String
+  deriving (Show,Eq) 
+\end{lstlisting}
+\caption{Грамматика рассматриваемого подмножества \lstinline{Markdown}}
+\label{listing:MarkdownADT}
+\end{figure}
+
+Блоком является либо пустой блок, либо заголовок, либо параграф, либо неупорядоченный список, либо блочная цитата. Большинство блоков имеют в своём составе список строк. Строка распадается на строчные элементы, дифференцируемые по стилю начертания: простые, полужирные, курсивом и моноширинные. В листинге~\ref{listing:MarkdownInline} представлены парсеры для распознавания строк, парсеры \lstinline{bold}, \lstinline{italic} и \lstinline{plain} аналогичны парсеру \lstinline{monospace}, поэтому опущены для краткости.
+
+При реализации парсеров активно применяются комбинаторы из библиотек, принцип построения которых был описан в предыдущих разделах. Стоит подробнее остановится на трёх из них, их типовые аннотации приведены в листинге~\ref{listing:ParserCombinators}:
+
+\begin{figure}[h]
+\begin{lstlisting}
+many :: Parser t a -> Parser t [a]
+
+sepby :: Parser t a -> Parser t b -> Parser t [a] 
+
+bracket :: Parser t a -> Parser t b -> Parser t c -> Parser t b
+\end{lstlisting}
+\caption{Типовые аннотации основных комбинаторов парсеров}
+\label{listing:ParserCombinators}
+\end{figure} 
+
+\begin{enumerate}
+  \item Комбинатор \lstinline{many} распознаёт список токенов, удовлетворяющих его парсеру-параметру.
+  \item Комбинатор \lstinline{sepby} распознаёт последовательность токенов, удовлетворяющих его первому параметру и разделённых токенами, удовлетворяющими его второму параметру.
+  \item Комбинатор \lstinline{bracket} распознаёт токены, удовлетворяющие его третьему парасетру и заключенные между токенами, удовлетворяющими первому и третьему соответственно.  
+\end{enumerate}
+
+\begin{figure}[t]
+\begin{lstlisting}
+line :: TM.TextualMonoid t => Parser t Line
+line = emptyLine `mplus` nonEmptyLine
+
+emptyLine :: TM.TextualMonoid t => Parser t Line
+emptyLine = many (sat wspaceOrTab) >> char '\n' >> return Empty
+
+nonEmptyLine :: TM.TextualMonoid t => Parser t Line
+nonEmptyLine = do
+  many (sat wspaceOrTab)
+  l <- sepby1 (bold <|> italic <|> plain <|> monospace) (many (char ' '))
+  many (sat wspaceOrTab)
+  char '\n'
+  return . NonEmpty $ l
+
+monospace :: TM.TextualMonoid t => Parser t Inline
+monospace = do
+  txt <- bracket (char '`') sentence (char '`')
+  p   <- many punctuation
+  return . Monospace $ txt ++ p
+\end{lstlisting}
+\caption{Распознавание строк из строчных элементов.}
+\label{listing:MarkdownInline}
+\end{figure} 
+
+Получив возможность распознавать строки и внутристрочные элементы, можно приступить к реализации парсеров для блоков. В листинге~\ref{listing:MarkdownHeader} представлен парсер для заголовка, а в листинге~\ref{listing:markdownUlist} --- для неупорядоченного списка, парсеры для остальных блоков описываются схожим образом. Здесь следует сделать замечание, что текущая версия парсера не поддерживает вложенные списки, оформляемые в \lstinline{Markdown} с помощью отступов. 
+
+\begin{figure}[t]
+\begin{lstlisting}
+header :: TM.TextualMonoid t => Parser t Block 
+header = do
+  hashes <- token (some (char '#')) 
+  text <- nonEmptyLine
+  return $ Header (length hashes,text)
+\end{lstlisting}
+\caption{Парсер для заголовка}
+\label{listing:MarkdownHeader}
+\end{figure} 
+
+\begin{figure}[t]
+\begin{lstlisting}
+unorderdList :: TM.TextualMonoid t => Parser t Block
+unorderdList = do
+  items <- some (token bullet >> line)
+  return . UnorderedList $ items 
+  where
+    bullet :: TM.TextualMonoid t => Parser t Char
+    bullet = char '*' <|> char '+' <|> char '-' >>= return
+\end{lstlisting}
+\caption{Парсер для неупорядоченного списка}
+\label{listing:markdownUlist}
+\end{figure} 
+
+\lstinline{Markdown} применяется также для электронного конспектирования и оформления заданий. Полезным расширением грамматики \lstinline{Markdown} являются вставки матетических формул в формате \LaTeX. Требуется распознать \LaTeX-блок и оставить его без изменений, чтобы при последующей генерации кода по абстрактному синтаксическому дереву можно было отобразить его соответствующим образом. Для этого служит парсер из листинга~\ref{listing:MarkdownLaTeX}.
+
+\begin{figure}[h]
+\begin{lstlisting}
+blockMath :: TM.TextualMonoid t => Parser t Block
+blockMath = (bracket (string "$$") (some (sat (/= '$'))) (string "$$")) >>= 
+  return . Paragraph . (: []) . NonEmpty . (: []) . Plain . 
+    (\x -> "$$" ++ x ++ "$$") 
+\end{lstlisting}
+\caption{Парсер \LaTeX-блоков}
+\label{listing:MarkdownLaTeX}
+\end{figure} 
+
+В листинге \ref{listing:MarkdownDoc} представлен парсер самого верхнего уровня, служащий для распознавания \lstinline{Markdown}-документа как списка блоков.
+
+\begin{figure}[h]
+\begin{lstlisting}
+doc :: TM.TextualMonoid t => Parser t Document
+doc = many block
+  where block = blank <|> header <|> paragraph <|> 
+                unorderdList <|> blockquote <|> blockMath
+\end{lstlisting}
+\caption{Парсер, распознающий \lstinline{Markdown}-документ}
+\label{listing:MarkdownDoc}
+\end{figure} 
+
+\subsection{Генерация \lstinline{HTML}-кода}
+
+Имея абстрактное синтаксическое дерево \lstinline{Markdown}-документа можно сгенерировать по нему исходный текст разметки на любом требуемом языке разметки. В качестве целевого языка разметки был выбран \lstinline{HTML}, для рендеринга \LaTeX -вставок используется \lstinline{JavaScript}-библиотека \lstinline{MathJax}~\autocite{MathJax}. Возможно построения генераторов и для других языков разметки. 
+
+В листинге~\ref{listing:HTMLGen} представлен сокращённый кодогенератор, опущена, для краткости, обработка некоторых блоков и внутристрочных элементов, которая происходит аналогично представленным. Этот код служит демонстрацией выразительности, которая предоставляется сопоставлением с образцом и алгебраическими типами данных.
+
+\begin{figure}[h]
+\begin{lstlisting}
+serialize :: Document -> String
+serialize = concatMap genBlock
+
+genBlock :: Block -> String
+genBlock Blank = "\n"
+genBlock (Header h) = 
+  "<h" ++ s ++ ">" ++ genLine (snd h) ++ "</h" ++ s ++ ">" ++ "\n"
+    where s = show (fst h)
+genBlock (UnorderedList l) = 
+  "<ul>" ++ concatMap ((++ "\n") . genOrderedListItem) l ++ "</ul>" ++ "\n"
+
+genLine :: Line -> String
+genLine Empty         = ""
+genLine (NonEmpty []) = genLine Empty ++ "\n"
+genLine (NonEmpty l)  = concatMap ((++ " ") . genInline) l    
+
+genOrderedListItem :: Line -> String
+genOrderedListItem l = "<li>" ++ genLine l ++ "</li>" 
+
+genInline :: Inline -> String
+genInline (Plain s) = s
+genInline (Monospace s) = "<code>" ++ s ++ "</code>"
+\end{lstlisting}
+\caption{Генерация \lstinline{HTML}}
+\label{listing:HTMLGen}
+\end{figure}  
+
+\newpage
 
 % Печать списка литературы (библиографии)
 \printbibliography[heading=bibintoc%
