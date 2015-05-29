@@ -25,7 +25,10 @@
 \setlength\MyIndent{1.25cm}
 \setlength{\parindent}{\MyIndent} % Абзацный отступ
 \frenchspacing            % Отключение лишних отступов после точек
-\KOMAoptions{DIV=calc}    % Пересчёт геометрии
+\KOMAoptions{%
+    DIV=calc,         % Пересчёт геометрии
+    numbers=endperiod % точки после номеров разделов
+}
 
                             % Консервативный вариант:
 %\usepackage                % ручное задание геометрии
@@ -38,12 +41,11 @@
 
 %%% Заголовки
 
-\KOMAoptions{%
-    %numbers=endperiod% если хочется точек после номеров разделов
-}
+
 
 \ifthenelse{\equal{\theworktype}{2}}{%
 \KOMAoptions{%
+    numbers=endperiod,% точки после номеров разделов
     headings=normal,   % размеры заголовков поменьше стандартных
     chapterprefix=true,% Печатать слово Глава в магистерской
     appendixprefix=true% Печатать слово Приложение
@@ -69,8 +71,7 @@
 \addtokomafont{sectioning}{\hspace{\MyIndent}}
 
 \renewcommand*{\captionformat}{~---~}
-% \renewcommand*{\figureformat}{Рисунок~\thefigure\autodot}
-\renewcommand*{\figureformat}{Листинг~\thefigure\autodot}
+\renewcommand*{\figureformat}{Рисунок~\thefigure}
 
 %%% Оглавление
 \usepackage{tocloft}
@@ -98,6 +99,16 @@
 \renewcommand{\cftsecpagefont}{}
 }
 
+% Точки после верхних элементов оглавления
+\renewcommand{\cftsecdotsep}{\cftdotsep}
+\newcommand{\cftchapdotsep}{\cftdotsep}
+
+\ifthenelse{\value{worktype} > 1}{%
+    \renewcommand{\cftchapaftersnum}{.}
+}{
+\renewcommand{\cftsecaftersnum}{.}
+\renewcommand{\cftsubsecaftersnum}{.}
+}
 %%% Списки (enumitem)
 
 \usepackage {enumitem}      % Списки с настройкой отступов
