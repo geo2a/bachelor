@@ -7,11 +7,6 @@
 
 \input{preamble.tex}
 
-% Рамочка вокруг фигур
-\usepackage{float}
-\floatstyle{boxed}
-\restylefloat{figure}
-
 \begin{document}
 
 \Intro
@@ -31,6 +26,7 @@
 Ключевой концепцией функционального программирования являются так называемые функции высших порядков (higher-order function). Они представляют собой функции, в качестве параметров которых могут выступать другие функции.
 
 В качестве примера рассмотрим одну из функций стандартной библиотеки языка Haskell (листинг~\ref{listing:map}).
+
 \begin{figure}[h]
 \begin{lstlisting}
 map :: (a -> b) -> [a] -> [b]
