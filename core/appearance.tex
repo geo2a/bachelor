@@ -71,8 +71,15 @@
 \addtokomafont{sectioning}{\hspace{\MyIndent}}
 
 % Переделка окружения figure под листинги
-\renewcommand*{\captionformat}{~---~}
+%\renewcommand*{\captionformat}{\small: }
+%\addtokomafont{caption}{\small}
+\addtokomafont{captionlabel}{\bfseries}
 \renewcommand*{\figureformat}{Листинг~\thefigure}
+\usepackage[font=small,skip=3pt]{caption}%
+\addtolength{\intextsep}{.15cm}
+\setlength{\belowcaptionskip}{-.3cm}
+\addtolength{\floatsep}{.8cm}
+\addtolength{\textfloatsep}{.2cm}
 
 %%% Оглавление
 \usepackage{tocloft}
