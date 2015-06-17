@@ -260,11 +260,12 @@
 \EndFmtInput
 %
 \usetheme[titleprogressbar]{m}
-
+\usepackage{tikz-cd}       % Коммутативные диаграммы
 \usepackage{booktabs}
 \usepackage[scale=2]{ccicons}
 \usepackage{minted}
 \usepackage{listings}
+
 
 \usepgfplotslibrary{dateplot}
 
@@ -287,14 +288,13 @@
 
 % Форматирование <|>
 
-% \setbeamercolor{block title}{use=structure,fg=white,bg=purple!75!black}
 \definecolor{cloud}{HTML}{ECF0F1}
 \setbeamercolor{block title}{fg=white,bg=orange!75!black}
 \setbeamercolor{block body}{fg=black,bg=cloud}
 
 \title{Функциональный парсер легковесного языка разметки Markdown
 на основе комбинирования монад и моноидального представления исходного текста}
-\date{9.04.2015}
+\date{20.06.2015}
 \author{Г.~А.~Лукьянов, ПМИ, группа 4.1 \\{Научный руководитель: асс. каф. ИВЭ А.~М.~Пеленицын}}
 \institute{Институт математики, механики и компьютерных наук ЮФУ}
 
@@ -305,25 +305,14 @@
 \maketitle
 
 \begin{frame}[fragile]
-  \frametitle{Язык Markdown и его использование}
-    \vspace{5em}
-    \includegraphics[scale=1]{images/markdown.png}
-    \includegraphics[scale=0.35]{images/octocat.png}
-    \includegraphics[scale=0.35]{images/discourse.png}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Пример документа Markdown}
-  \vspace{0.5cm}
-  \screenshotw{11cm}{md-html.png}
-\end{frame}
-
-\begin{frame}[fragile]
   \frametitle{Поставленные задачи}
   \begin{enumerate}
-    \item Разработка двух библиотек монадических парсеров, с применением различных технологий комбинирования вычислительных эффектов. Обе библиотеки должны использовать моноидальное представление исходного текста.
-    \item Сравнение подходов к комбинированию вычислительных эффектов, выявление их преимуществ и недостатков.
-    \item Транслятор Markdown с \LaTeX-вставками в HTML и \LaTeX.
+    \item Разработка двух библиотек \textbf{монадических парсеров}, 
+    с применением различных технологий \textbf{комбинирования вычислительных 
+    эффектов}. Обе библиотеки должны использовать \textbf{моноидальное}
+    представление исходного текста.
+    \item \textbf{Сравнение подходов} к комбинированию вычислительных эффектов, выявление их преимуществ и недостатков.
+    \item Разработка \textbf{транслятора Markdown} с \LaTeX-вставками в HTML и \LaTeX.
   \end{enumerate}
 \end{frame}
 
@@ -339,6 +328,228 @@ Department of Computer Science, University of Nottingham, 1996
     Extensible Effects An Alternative to Monad Transformers // \textit{Oleg
 Kiselyov}, \textit{Amr Sabry}, \textit{Cameron Swords} – Indiana University, USA – \textbf{Haskell Symposium 2013}
   \end{description}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Библиотеки монадических парсеров}
+  \begin{itemize}
+    \setlength\itemsep{2em}
+    \item[] {\Large{Parsec}} \\
+      \footnotesize{\url{https://hackage.haskell.org/package/parsec}}
+    \item[] {\Large{Attoparsec}} \\
+      \footnotesize{\url{https://hackage.haskell.org/package/attoparsec}}
+    \item[] {\Large{Picoparsec}} \\
+      \footnotesize{\url{https://hackage.haskell.org/package/picoparsec}}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Исходный тип для парсера~[MParsers96]}
+  \begin{block}{Тип Parser}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{newtype}\;{}\<[10]%
+\>[10]{}\Conid{Parser}\;\Varid{a}\mathrel{=}\Conid{Parser}\;\{\mskip1.5mu {}\<[E]%
+\\
+\>[10]{}\Varid{parse}\mathbin{::}\Conid{String}\to \Conid{Maybe}\;(\Varid{a},\Conid{String})\mskip1.5mu\}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+  \begin{block}{Экземпляр класса типов Monad}
+    \vspace{-1em}
+  	\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{11}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{20}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{25}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{37}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{instance}\;{}\<[11]%
+\>[11]{}\Conid{Monad}\;\Conid{Parser}\;\mathbf{where}{}\<[E]%
+\\
+\>[11]{}\Varid{return}\;\Varid{t}\mathrel{=}\Conid{Parser}\mathbin{\$}\lambda \Varid{s}\to \Conid{Just}\;(\Varid{t},\Varid{s}){}\<[E]%
+\\
+\>[11]{}\Varid{m}\bind \Varid{k}{}\<[20]%
+\>[20]{}\mathrel{=}\Conid{Parser}\mathbin{\$}\lambda \Varid{s}\to {}\<[E]%
+\\
+\>[20]{}\hsindent{5}{}\<[25]%
+\>[25]{}\mathbf{do}\;{}\<[29]%
+\>[29]{}(\Varid{u},\Varid{v}){}\<[37]%
+\>[37]{}\leftarrow \Varid{parse}\;\Varid{m}\;\Varid{s}{}\<[E]%
+\\
+\>[29]{}(\Varid{x},\Varid{y}){}\<[37]%
+\>[37]{}\leftarrow \Varid{parse}\;(\Varid{k}\;\Varid{u})\;\Varid{v}{}\<[E]%
+\\
+\>[29]{}\Varid{return}\;(\Varid{x},\Varid{y}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Строковые типы в Haskell}
+  \begin{itemize}
+    \setlength\itemsep{2em}
+    \item[] {\Large{String}} \\
+      \small{Псевдоним для списка символов}
+    \item[] {\Large{ByteString}} \\
+      \small{Наиболее низкоуровневый тип}
+    \item[] {\Large{Text}} \\
+      \small{Тип для работы с Unicode-текстом}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Строковые типы как моноиды~[Monoids]}
+    \begin{block}{Полиморфный по входу базовый парсер}
+      \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{item}\mathbin{::}\Conid{TextualMonoid}\;\Varid{t}\Rightarrow \Conid{Parser}\;\Varid{t}\;\Conid{Char}{}\<[E]%
+\\
+\>[B]{}\Varid{item}\mathrel{=}{}\<[9]%
+\>[9]{}\Conid{Parser}\;\Varid{f}{}\<[E]%
+\\
+\>[9]{}\mathbf{where}\;\Varid{f}\;\Varid{inp}\mathrel{=}\Varid{splitCharacterPrefix}\;\Varid{inp}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+    \end{block}
+    \begin{block}{Фукнция, отделяющая префикс}
+      \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{26}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{splitCharacterPrefix}\mathbin{::}{}\<[26]%
+\>[26]{}\Conid{TextualMonoid}\;\Varid{t}\Rightarrow {}\<[E]%
+\\
+\>[26]{}\Varid{t}\to \Conid{Maybe}\;(\Conid{Char},\Varid{t}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+    \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Парсер как стек монад}
+  \begin{block}{Обновленный тип Parser}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{18}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{newtype}\;{}\<[10]%
+\>[10]{}\Conid{Parser}\;\Varid{t}\;\Varid{a}\mathrel{=}{}\<[E]%
+\\
+\>[10]{}\Conid{Parser}\;{}\<[18]%
+\>[18]{}(\Conid{StateT}\;(\Conid{ParserState}\;\Varid{t}){}\<[E]%
+\\
+\>[18]{}(\Conid{Either}\;(\Conid{ErrorReport}\;\Varid{t}))\;\Varid{a}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Extensible Effects~[ExtEff13]}
+  \begin{block}{Тип Eff}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Conid{Eff}\;\Varid{r}\;\Varid{a}\mathrel{=}\Conid{Free}\;(\Conid{Union}\;\Varid{r})\;\Varid{a}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+  \begin{block}{Пример статического набора эффектов}
+    \begin{center}
+Eff (Reader Int :> Reader Bool :> Void) a
+    \end{center}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Парсеры на Extensible Effects~[ExtEff13]}
+
+  \begin{block}{Парсер-предикат и его эффекты}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{sat}\mathbin{::}{}\<[9]%
+\>[9]{}(\Conid{Member}\;\Conid{Fail}\;\Varid{r}{}\<[E]%
+\\
+\>[9]{},\Conid{Member}\;(\Conid{State}\;\Conid{String})\;\Varid{r}{}\<[E]%
+\\
+\>[9]{})\Rightarrow (\Conid{Char}\to \Conid{Bool})\to \Conid{Eff}\;\Varid{r}\;\Conid{Char}{}\<[E]%
+\\
+\>[B]{}\Varid{sat}\;\Varid{p}{}\<[9]%
+\>[9]{}\mathrel{=}\mathbf{do}\;{}\<[15]%
+\>[15]{}\Varid{x}\leftarrow \Varid{item}{}\<[E]%
+\\
+\>[15]{}\mathbf{if}\;\Varid{p}\;\Varid{x}\;\mathbf{then}\;\Varid{return}\;\Varid{x}\;\mathbf{else}\;\Varid{die}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+
+  \begin{block}{Запуск парсера}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{parse}\;\Varid{p}\;\Varid{inp}\mathrel{=}\Varid{run}\mathbin{\circ}\Varid{runFail}\mathbin{\circ}\Varid{runState}\;\Varid{inp}\mathbin{\$}\Varid{p}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Парсеры на Extensible Effects~[ExtEff13]}
+
+  \begin{block}{Парсер для слов и его эффекты}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{word}\mathbin{::}{}\<[10]%
+\>[10]{}(\Conid{Member}\;\Conid{Fail}\;\Varid{r}{}\<[E]%
+\\
+\>[10]{},\Conid{Member}\;(\Conid{State}\;\Conid{String})\;\Varid{r}{}\<[E]%
+\\
+\>[10]{},\Conid{Member}\;(\Conid{Choose})\;\Varid{r})\Rightarrow \Conid{Eff}\;\Varid{r}\;\Conid{String}{}\<[E]%
+\\
+\>[B]{}\Varid{word}\mathrel{=}\Varid{some}\;\Varid{letter}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+
+  \begin{block}{Запуск парсера}
+    \begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{parseWithChoose}\;\Varid{p}\;\Varid{inp}\mathrel{=}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Varid{run}\mathbin{\circ}\Varid{runChoice}\mathbin{\circ}\Varid{runFail}\mathbin{\circ}\Varid{runState}\;\Varid{inp}\mathbin{\$}\Varid{p}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Язык Markdown и его использование}
+    \vspace{5em}
+    \includegraphics[scale=1]{images/markdown.png}
+    \includegraphics[scale=0.35]{images/octocat.png}
+    \includegraphics[scale=0.35]{images/discourse.png}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Пример документа Markdown}
+  \vspace{0.5cm}
+  \screenshotw{11cm}{md-html.png}
 \end{frame}
 
 \begin{frame}[fragile]
@@ -450,122 +661,6 @@ Kiselyov}, \textit{Amr Sabry}, \textit{Cameron Swords} – Indiana University, U
 \ColumnHook
 \end{hscode}\resethooks
     \end{block}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Исходный тип для парсера~[MParsers96]}
-  \begin{block}{Тип Parser}
-    \begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{newtype}\;{}\<[10]%
-\>[10]{}\Conid{Parser}\;\Varid{a}\mathrel{=}\Conid{Parser}\;\{\mskip1.5mu {}\<[E]%
-\\
-\>[10]{}\Varid{parse}\mathbin{::}\Conid{String}\to \Conid{Maybe}\;(\Varid{a},\Conid{String})\mskip1.5mu\}{}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-  \end{block}
-  \begin{block}{Экземпляр класса типов Monad}
-    \vspace{-1em}
-  	\begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{11}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{20}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{25}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{37}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{instance}\;{}\<[11]%
-\>[11]{}\Conid{Monad}\;\Conid{Parser}\;\mathbf{where}{}\<[E]%
-\\
-\>[11]{}\Varid{return}\;\Varid{t}\mathrel{=}\Conid{Parser}\mathbin{\$}\lambda \Varid{s}\to \Conid{Just}\;(\Varid{t},\Varid{s}){}\<[E]%
-\\
-\>[11]{}\Varid{m}\bind \Varid{k}{}\<[20]%
-\>[20]{}\mathrel{=}\Conid{Parser}\mathbin{\$}\lambda \Varid{s}\to {}\<[E]%
-\\
-\>[20]{}\hsindent{5}{}\<[25]%
-\>[25]{}\mathbf{do}\;{}\<[29]%
-\>[29]{}(\Varid{u},\Varid{v}){}\<[37]%
-\>[37]{}\leftarrow \Varid{parse}\;\Varid{m}\;\Varid{s}{}\<[E]%
-\\
-\>[29]{}(\Varid{x},\Varid{y}){}\<[37]%
-\>[37]{}\leftarrow \Varid{parse}\;(\Varid{k}\;\Varid{u})\;\Varid{v}{}\<[E]%
-\\
-\>[29]{}\Varid{return}\;(\Varid{x},\Varid{y}){}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-  \end{block}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Строковые типы как моноиды~[Monoids]}
-    \begin{block}{Полиморфный по входу базовый парсер}
-      \begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Varid{item}\mathbin{::}\Conid{TextualMonoid}\;\Varid{t}\Rightarrow \Conid{Parser}\;\Varid{t}\;\Conid{Char}{}\<[E]%
-\\
-\>[B]{}\Varid{item}\mathrel{=}{}\<[9]%
-\>[9]{}\Conid{Parser}\;\Varid{f}{}\<[E]%
-\\
-\>[9]{}\mathbf{where}\;\Varid{f}\;\Varid{inp}\mathrel{=}\Varid{splitCharacterPrefix}\;\Varid{inp}{}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-    \end{block}
-    \begin{block}{Фукнция, отделяющая префикс}
-      \begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{26}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Varid{splitCharacterPrefix}\mathbin{::}{}\<[26]%
-\>[26]{}\Conid{TextualMonoid}\;\Varid{t}\Rightarrow {}\<[E]%
-\\
-\>[26]{}\Varid{t}\to \Conid{Maybe}\;(\Conid{Char},\Varid{t}){}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-    \end{block}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Парсер как стек монад}
-  \begin{block}{Обновленный тип Parser}
-    \begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{18}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{newtype}\;{}\<[10]%
-\>[10]{}\Conid{Parser}\;\Varid{t}\;\Varid{a}\mathrel{=}{}\<[E]%
-\\
-\>[10]{}\Conid{Parser}\;{}\<[18]%
-\>[18]{}(\Conid{StateT}\;(\Conid{ParserState}\;\Varid{t}){}\<[E]%
-\\
-\>[18]{}(\Conid{Either}\;(\Conid{ErrorReport}\;\Varid{t}))\;\Varid{a}){}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-  \end{block}
-\end{frame}
-
-\begin{frame}[fragile]
-  \frametitle{Парсер на Extensible Effects~[ExtEff13]}
-  \begin{block}{Тип Eff}
-    \begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{type}\;\Conid{Eff}\;\Varid{r}\;\Varid{a}\mathrel{=}\Conid{Free}\;(\Conid{Union}\;\Varid{r})\;\Varid{a}{}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-  \end{block}
-  \begin{block}{Новый тип Parser}
-    \begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{type}\;\Conid{Parser}\;\Varid{t}\;\Varid{a}\mathrel{=}\Conid{Eff}\;(\Conid{State}\;\Varid{t}\mathbin{:>}(\Conid{Fail}\mathbin{:>}\Conid{Void}))\;\Varid{a}{}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-  \end{block}
 \end{frame}
 
 \begin{frame}[fragile]
