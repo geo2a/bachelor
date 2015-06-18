@@ -1,2 +1,2 @@
 compiler: pdflatex
-root_file: text/main.tex
+root_file: main.tex
