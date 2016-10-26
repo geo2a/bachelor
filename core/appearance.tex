@@ -65,7 +65,35 @@
 \ChTitleVar{\CentSuperFont}
 \ChNameUpperCase
 \ChTitleUpperCase
+% Прячем слово "Глава", но оставляем номер
+\makeatletter
+\renewcommand{\DOCH}{%
+  \CNoV\thechapter.
 }
+\makeatother
+}
+
+
+
+% \makeatletter
+% \ChNameVar{\Large\rm} % sets the style for name
+% \ChNumVar{\Huge} % sets the style for digit
+% \ChTitleVar{\Large\rm\centering} % sets the style for title
+% \ChRuleWidth{4pt} % Set RW=4pt
+% \ChNameUpperCase % Make name uppercase
+% \renewcommand{\DOCH}{%
+% \setlength{\fboxrule}{\RW} % Let fbox lines be controlled by
+% % \ChRuleWidth
+% % \fbox{\CNV\FmN{\@chapapp}\space \CNoV\thechapter}\par\nobreak
+% \fbox{\CNV\FmN{}\space \CNoV\thechapter}\par\nobreak
+% \vskip 40\p@}
+% \renewcommand{\DOTI}[1]{%
+% \CTV\FmTi{#1}\par\nobreak
+% \vskip 40\p@}
+% \renewcommand{\DOTIS}[1]{%
+% \CTV\FmTi{#1}\par\nobreak
+% \vskip 40\p@}
+% \makeatother
 
 % Заголовок (под)раздела с абзацного отступа
 \addtokomafont{sectioning}{\hspace{\MyIndent}}
