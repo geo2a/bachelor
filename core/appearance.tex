@@ -122,8 +122,12 @@
 % слово Глава
 \usepackage{calc}
 \ifthenelse{\value{worktype} > 1}{%
-\renewcommand{\cftchappresnum}{Глава }
-\addtolength{\cftchapnumwidth}{\widthof{Глава }}
+\renewcommand{\cftchappresnum}{
+  % Глава
+}
+\addtolength{\cftchapnumwidth}{\widthof{
+  % Глава 
+}}
 }
 
 % Очищаем оформление названий старших элементов в оглавлении
