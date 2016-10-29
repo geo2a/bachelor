@@ -1,232 +1,211 @@
+\chapter{Методы построения библиотек синтаксических анализаторов}
 
-\chapter{Реализация парсера языка Markdown}
+Вернёмся к простейшему типу для представления синтаксического анализатора 
+(листинг~\ref{listing:basicParserType}). Парсер --- это функция, 
+принимающая на вход строку символов и возвращающая список пар возможных вариантов  
+разбора и неразобранных остатков входного потока. Пустой список результатов 
+соответствует полностью неудачному разбору, а множество результатов --- 
+неоднозначности.
 
-Язык \lstinline{Markdown} --- легковесный язык разметки, применяется для быстрой
-вёрстки небольших документов. Полезен в случаях, когда нет необходимости привлекать
-такие тяжеловесные форматы как \lstinline{HTML} и \LaTeX. Популярен в
-интернете, к примеру, на известном хостинге программного кода
-\lstinline{GitHub}.
+\begin{figure}[h]
+\begin{lstlisting}
+type Parser a = String -> [(a,String)]
+\end{lstlisting}
+\caption{Тип Parser}
+\label{listing:basicParserType}
+\end{figure}
 
-\section{Синтаксис Markdown}
+Типы вида Parser a можно рассматривать как вычисления с
+определённым побочным эффектом. В данном случае эксплуатируется эффект 
+недетерминизма вычислений, для выражения возможности неоднозначного разбора.
+Для представления эффектов такого рода в языке~\lstinline{Haskell} используется
+концепция монады~\cite{wadlerMonads}. В статье~\cite{monParsing} можно найти 
+подробную информацию о свойствах таких парсеров, а также описание необходимых 
+экземпляров классов типов.
 
-  В отличие от \lstinline{HTML} или \lstinline{XML}, \lstinline{Markdown} не имеет
-  стандарта. Существует неформальное, но подробное описание базового
-  синтаксиса~\cite{markdownSyntax}, а также нескольких расширенных версий, в
-  числе которых так называемый \lstinline{GitHub Flavored Markdown}.
+Для расширения возможностей и повышения удобства синтаксического анализа можно расширять
+набор эффектов функций-парсеров. Далее будут представлены методы построения библиотек
+монадических комбинаторов парсеров с использованием двух подходов к контролю
+вычислительных эффектов: трансформеров монад и расширяемых эффектов. 
 
-  В реализуемом парсере рассматривается подмножество базового синтаксиса,
-  включающее в себя заголовки, параграфы, неупорядоченные списки и блочные цитаты.
-  Дополнительной возможностью являются вставки математических формул в формате
-  \LaTeX.
+\section{Синтаксические анализаторы на основе стека трансформеров монад}
 
-\section{Реализация парсера}
+  Трансформеры (преобразователи) монад --- концепция, позволяющая придать заданной 
+  монаде свойства другой монады. Возможно многократное повторение этого преобразования, 
+  порождающее стек монад, которые комбинирует вычислительных эффекты, привносимые 
+  каждой отдельной монадой.
 
-  Язык программирования \lstinline{Haskell} известен своей развитой системой
-  типов. Аппарат алгебраических типов данных предоставляет удобные средства для
-  представления абстрактного синтаксического дерева. Любой
-  \lstinline{Markdown}-документ представляет собой список блоков. Блок
-  представляется типом-суммой, конструкторы которого отражают рассматриваемое
-  подмножество \lstinline{Markdown}. В листинге~\ref{listing:MarkdownADT}
-  представлены типы, описывающие рассматриваемую грамматику.
-
-  \begin{figure}[t]
-  \begin{lstlisting}
-  type Document = [Block]
-
-  data Block = Blank
-             | Header (Int,Line)
-             | Paragraph [Line]
-             | UnorderedList [Line]
-             | BlockQuote [Line]
-    deriving (Show,Eq)
-
-  data Line = Empty | NonEmpty [Inline]
-    deriving (Show,Eq)
-
-  data Inline = Plain String
-              | Bold String
-              | Italic String
-              | Monospace String
-    deriving (Show,Eq)
-  \end{lstlisting}
-  \caption{Типы для представления абстрактного синтаксического дерева
-  рассматриваемого подмножества \lstinline{Markdown}}
-  \label{listing:MarkdownADT}
-  \end{figure}
-
-  Блоком является либо пустой блок, либо заголовок, либо параграф, либо
-  неупорядоченный список, либо блочная цитата. Большинство блоков имеют в своём
-  составе список строк. Строка распадается на строчные элементы, дифференцируемые
-  по стилю начертания: простые, полужирные, курсивом и моноширинные.
-  В листинге~\ref{listing:MarkdownInline} представлены парсеры для распознавания
-  строк, парсеры \lstinline{bold}, \lstinline{italic} и \lstinline{plain}
-  аналогичны парсеру \lstinline{monospace}, поэтому опущены для краткости.
-
-  При реализации парсеров активно применяются комбинаторы из библиотек, принцип
-  построения которых был описан в главе 3. Стоит подробнее остановится
-  на трёх из них, их типовые аннотации приведены в
-  листинге~\ref{listing:ParserCombinators}:
+  В статье~\cite{monParsing} предлагается способ разложения типа из 
+  листинга~\ref{listing:basicParserType} на стек из двух монад: монады для вычислений 
+  с состоянием и списковой монады, обеспечивающей эффект недетерминизма. Таким образом, 
+  тип приобретает вид, представленный в листинге~\ref{listing:monadStackParserType}.
 
   \begin{figure}[h]
   \begin{lstlisting}
-  many :: Parser t a -> Parser t [a]
-
-  sepby :: Parser t a -> Parser t b -> Parser t [a]
-
-  bracket :: Parser t a -> Parser t b -> Parser t c -> Parser t b
+  type Parser a = StateT String [] a
   \end{lstlisting}
-  \caption{Типовые аннотации основных комбинаторов парсеров}
-  \label{listing:ParserCombinators}
+  \caption{Парсер как простой стек монад}
+  \label{listing:monadStackParserType}
   \end{figure}
 
-  \begin{enumerate}
-    \item Комбинатор \lstinline{many} распознаёт список токенов, удовлетворяющих
-    его парсеру-параметру.
-    \item Комбинатор \lstinline{sepby} распознаёт последовательность токенов,
-    удовлетворяющих его первому параметру и разделённых токенами, удовлетворяющими
-    его второму параметру.
-    \item Комбинатор \lstinline{bracket} распознаёт токены, удовлетворяющие его
-    третьему параметру и заключенные между токенами, удовлетворяющими первому и
-    третьему параметру соответственно.
-  \end{enumerate}
-
-  \begin{figure}[t]
-  \begin{lstlisting}
-  line :: TM.TextualMonoid t => Parser t Line
-  line = emptyLine `mplus` nonEmptyLine
-
-  emptyLine :: TM.TextualMonoid t => Parser t Line
-  emptyLine = many (sat wspaceOrTab) >> char '\n' >> return Empty
-
-  nonEmptyLine :: TM.TextualMonoid t => Parser t Line
-  nonEmptyLine = do
-    many (sat wspaceOrTab)
-    l <- sepby1 (bold <|> italic <|>
-                 plain <|> monospace) (many (char ' '))
-    many (sat wspaceOrTab)
-    char '\n'
-    return . NonEmpty $ l
-
-  monospace :: TM.TextualMonoid t => Parser t Inline
-  monospace = do
-    txt <- bracket (char '`') sentence (char '`')
-    p   <- many punctuation
-    return . Monospace $ txt ++ p
-  \end{lstlisting}
-  \caption{Распознавание строк из строчных элементов.}
-  \label{listing:MarkdownInline}
-  \end{figure}
-
-  Получив возможность распознавать строки и строчные элементы, можно приступить к реализации парсеров для блоков. В листинге~\ref{listing:MarkdownHeader} представлен парсер для заголовка, а в листинге~\ref{listing:markdownUlist} --- для неупорядоченного списка, парсеры для остальных блоков описываются схожим образом. Здесь следует сделать замечание, что текущая версия парсера не поддерживает вложенные списки, оформляемые в \lstinline{Markdown} с помощью отступов.
-
-  \begin{figure}[t]
-  \begin{lstlisting}
-  header :: TM.TextualMonoid t => Parser t Block
-  header = do
-    hashes <- token (some (char '#'))
-    text <- nonEmptyLine
-    return $ Header (length hashes,text)
-  \end{lstlisting}
-  \caption{Парсер для заголовка}
-  \label{listing:MarkdownHeader}
-  \end{figure}
-
-  \begin{figure}[t]
-  \begin{lstlisting}
-  unorderedList :: TM.TextualMonoid t => Parser t Block
-  unorderedList = do
-    items <- some (token bullet >> line)
-    return . UnorderedList $ items
-    where
-      bullet :: TM.TextualMonoid t => Parser t Char
-      bullet = char '*' <|> char '+' <|> char '-' >>= return
-  \end{lstlisting}
-  \caption{Парсер для неупорядоченного списка}
-  \label{listing:markdownUlist}
-  \end{figure}
-
-  \lstinline{Markdown} применяется также для электронного конспектирования и
-  оформления заданий. Полезным расширением грамматики \lstinline{Markdown}
-  являются вставки математических формул в формате \LaTeX. Требуется распознать
-  \LaTeX-блок и оставить его без изменений, чтобы при последующей генерации кода
-  по абстрактному синтаксическому дереву можно было отобразить его соответствующим
-  образом. Для этого служит парсер из листинга~\ref{listing:MarkdownLaTeX}.
+  Концепция трансформеров монад позволяет добавлять к стеку различные монады, 
+  предоставляющие различные полезные свойства: вычисления в конфигурируемом окружении, 
+  потенциально ошибочные вычисления, ведение лога и другие. В разработанной автором 
+  библиотеке монадических комбинаторов парсеров~\cite{mdParse} используется многоуровневый 
+  стек монад, представленный в листинге~\ref{listing:hugeMonadStackParserType}. Это 
+  представления парсера также является параметризованным типом входного потока.
+  Типы~\lstinline{ParserState} и~\lstinline{ErrorReport} представляют собой 
+  алгебраические типы данных для представления состояния парсера и возможной 
+  ошибки разбора соответственно.
 
   \begin{figure}[h]
   \begin{lstlisting}
-  blockMath :: TM.TextualMonoid t => Parser t Block
-  blockMath =
-    (bracket (string "$$") (some (sat (/= '$'))) (string "$$")) >>=
-    return . Paragraph . (: []) . NonEmpty . (: []) . Plain .
-      (\x -> "$$" ++ x ++ "$$")
+  newtype Parser t a = Parser (  
+      StateT (ParserState t) (Either (ErrorReport t)) a
+    ) deriving ( Functor, Applicative, Monad
+               , MonadState (ParserState t)
+               , MonadError (ErrorReport t)
+               )
   \end{lstlisting}
-  \caption{Парсер \LaTeX-блоков}
-  \label{listing:MarkdownLaTeX}
+  \caption{Парсер как стек монад}
+  \label{listing:hugeMonadStackParserType}
   \end{figure}
 
-  В листинге \ref{listing:MarkdownDoc} представлен парсер самого верхнего уровня,
-  служащий для распознавания \lstinline{Markdown}-документа как списка блоков.
+  Самым низкоуровневым примитивом, на основе которого строятся все последующие 
+  комбинаторы, является парсер, потребляющий из входного потока единственный элемент
+  (листинг~\ref{listing:mtlParsersItem}).
 
   \begin{figure}[h]
   \begin{lstlisting}
-  doc :: TM.TextualMonoid t => Parser t Document
-  doc = many block
-    where block = blank <|> header <|> paragraph <|>
-                  unorderdList <|> blockquote <|> blockMath
+  item :: TM.TextualMonoid t => Parser t Char
+  item = do
+    state  <- get
+    let s = TM.splitCharacterPrefix . remainder $ state
+    case s of 
+      Nothing -> throwError (EmptyRemainder "item",state)
+      Just (c,rest) -> do  
+        let (c,rest) = fromJust s
+        put (ParserState {position = updatePos (position state) c, remainder = rest})
+        return c  
   \end{lstlisting}
-  \caption{Парсер, распознающий \lstinline{Markdown}-документ}
-  \label{listing:MarkdownDoc}
-  \end{figure}
+  \caption{Потребление одного элемента входного потока парсером на основе трансформеров 
+  монад}
+  \label{listing:mtlParsersItem}
+  \end{figure} 
 
-\section{Генерация HTML-кода}
-
-  Имея абстрактное синтаксическое дерево \lstinline{Markdown}-документа можно
-  сгенерировать по нему исходный текст на любом требуемом языке разметки.
-  В качестве целевого был выбран язык разметри гипертекста \lstinline{HTML}, для рендеринга
-  \LaTeX-вставок используется \lstinline{JavaScript}-библиотека
-  \lstinline{MathJax}~\cite{mathJax}. Возможно построения генераторов и для
-  других языков разметки.
-
-  Генерация кода происходит от общего к частному. Функция \lstinline{serialize}
-  генерирует код по списку блоков и конкатенирует результат. Генерация каждого
-  блока производится функцией \lstinline{genBlock}, которая соответствующим
-  образом обрабатывает все поддерживаемые виды блоков и генерирует нужный код.
-  Строки и строчные элементы генерируются функциями \lstinline{genLine} и
-  \lstinline{genInline} соответственно.
-
-  В листинге~\ref{listing:HTMLGen} представлен сокращённый кодогенератор, опущена,
-  для краткости, обработка некоторых блоков и строчных элементов, которая
-  происходит аналогично представленным. Этот код служит демонстрацией
-  выразительности, которая предоставляется сопоставлением с образцом и
-  алгебраическими типами данных.
+  В листингах~\ref{listing:mtlParserSat} и~\ref{listing:mtlParserString} приведены ещё дав примера парсеров из разработанной библиотеки: 
+  распознавание символа, удовлетворяющего предикату и заданной строки символов.
 
   \begin{figure}[h]
   \begin{lstlisting}
-  serialize :: Document -> String
-  serialize = concatMap genBlock
-
-  genBlock :: Block -> String
-  genBlock Blank = "\n"
-  genBlock (Header h) =
-    "<h" ++ s ++ ">" ++ genLine (snd h) ++ "</h" ++ s ++ ">" ++ "\n"
-      where s = show (fst h)
-  genBlock (UnorderedList l) =
-    "<ul>" ++ concatMap ((++ "\n") . genOrderedListItem) l ++ "</ul>" ++ "\n"
-
-  genLine :: Line -> String
-  genLine Empty         = ""
-  genLine (NonEmpty []) = genLine Empty ++ "\n"
-  genLine (NonEmpty l)  = concatMap ((++ " ") . genInline) l
-
-  genOrderedListItem :: Line -> String
-  genOrderedListItem l = "<li>" ++ genLine l ++ "</li>"
-
-  genInline :: Inline -> String
-  genInline (Plain s) = s
-  genInline (Monospace s) = "<code>" ++ s ++ "</code>"
+  sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
+  sat p = do
+    state <- get
+    x <- item `overrideError` (EmptyRemainder "sat")
+    if p x then return x else 
+      throwError (UnsatisfiedPredicate "general",state)
   \end{lstlisting}
-  \caption{Генерация \lstinline{HTML}}
-  \label{listing:HTMLGen}
+  \caption{}
+  \label{listing:mtlParserSat}
   \end{figure}
 
-  Полный исходный код парсера \lstinline{Markdown}, кодогенератора, а также вспомогательной библиотеки комбинаторов парсеров доступен в репозитории~\cite{mdParse}.
+  \begin{figure}[h]
+  \begin{lstlisting}
+  string :: TM.TextualMonoid t => String -> Parser t String
+  string s = do
+    state <- get
+    (mapM char s) `overrideError` 
+      (UnsatisfiedPredicate ("string " ++ s))
+  \end{lstlisting}
+  \caption{}
+  \label{listing:mtlParserString}
+  \end{figure}
+
+  Для осуществления разбора необходимо описать функцию, которая ``запускает''
+  вычисление (листинг~\ref{listing:mtlParseRun}). При использовании трансформеров 
+  монад порядок обработки вычислительных эффектов статически зафиксирован в 
+  типе стека монад. 
+  
+  \begin{figure}[h]
+  \begin{lstlisting}
+parse :: TM.TextualMonoid t => 
+  Parser t a -> t -> Either (ErrorReport t) (a,ParserState t)
+parse (Parser p) s = 
+  runStateT p (ParserState {remainder = s, position = initPos})
+    where initPos = (1,1)
+  \end{lstlisting}
+  \caption{}
+  \label{listing:mtlParseRun}
+  \end{figure}
+
+
+  Следует сказать, что концепция трансформеров монад имеет определённое удобство 
+  для программирования благодаря своей зрелости и популярности. Однако, как уже
+  обсуждалось ранее в разделе 1, этот подход обладает довольно низкой гибкостью, 
+  не позволяет добавлять к стеку несколько однородных эффектов (например, два 
+  трансформера~\lstinline{StateT}) без потери возможности автоматического 
+  подъёма (~\lstinline{lift}) и требует описания большого числа экземпляров классов 
+  типов. 
+
+  Рассмотрим далее методы построения монадических комбинаторов парсеров, основанные
+  на расширяемых эффектах --- альтернативному трансформерам монад подходу к управлению
+  вычислительными эффектами.  
+
+\section{Синтаксические анализаторы на основе расширяемых эффектов}
+
+  Расширяемые эффекты, подробно описанные в статье~\cite{extEffects}, представляют
+  собой альтернативный трансформерам монад подход к описанию вычислений с поблочными
+  эффектами.
+
+  Суть подхода заключается в аналогии между вычислительными эффектами и
+  клиент-серверным взаимодействием. Код, который собирается породить некоторый
+  побочный эффект: совершить ввод-вывод, бросить исключение и тому подобное должен
+  отправить \emph{запрос} на обработку этого эффекта особой глобальной сущности
+  --- менеджеру эффектов. Запрос описывает действие, которое необходимо
+  произвести, а также функцию-продолжение (англ. \emph{continuation}) для
+  возобновления работы после обработки запроса.
+
+  При разработке прототипа библиотеки парсеров~\cite{extEffParsers}, основанной на расширяемых 
+  эффектах, автором было принято следующее архитектурное решение: 
+  не создавать специальный тип для парсера, а указывать необходимый набор эффектов 
+  в ограничениях каждого отдельного комбинатора.
+
+  В листинге~\ref{listing:extEffItem} приведёна функция, потребляющая 
+  единственный символ из входного потока. В типовой аннотации декларированы
+  производимые функцией побочные эффекты: возможная неудача при разборе и 
+  вычисление с состоянием. Рассмотрим эту типовую аннотацию подробнее. 
+  Ограничение~\lstinline{Member Fail r} указывает, что набор 
+  эффектов~\lstinline{r} должен включать в себя эффект~\lstinline{Fail}, а 
+  результирующий тип функции~\lstinline{Eff r Char} означает, что данный 
+  комбинатор является вычислением с побочными эффектами из набора~\lstinline{r},
+  и порождает в качестве результата значение типа~\lstinline{Char}. 
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+item :: ( Member Fail r
+        , Member (State String) r
+        ) => Eff r Char
+item = do
+  s <- get
+  case s of 
+    [] -> die
+    (x:xs) -> put xs >> return x 
+  \end{lstlisting}
+  \caption{Потребление одного элемента входного потока парсером на основе 
+  расширяемых эффектов}
+  \label{listing:extEffItem}
+  \end{figure} 
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+sat :: ( Member Fail r
+       , Member (State String) r
+       ) => (Char -> Bool) -> Eff r Char
+sat p = do
+  (s :: String) <- get
+  x <- item
+  if p x then return x else (put s >> die)
+  \end{lstlisting}
+  \label{listing:extEffSat}
+  \end{figure} 
+
