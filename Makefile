@@ -14,8 +14,8 @@ all: main.pdf
 # missing file reference and interactively asking you for an alternative.
 
 main.pdf: main.tex
-	latexmk -pdf -pdflatex="pdflatex -interactive=nonstopmode" -use-make main.tex
-
+	# latexmk -pdf -pdflatex="pdflatex -interactive=nonstopmode" -use-make main.tex
+	latexmk -pdf -xelatex -use-make main.tex
 clean:
 	latexmk -CA
 

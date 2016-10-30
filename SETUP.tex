@@ -8,7 +8,7 @@
 
 % Здесь ничего не менять
 \usepackage [T2A] {fontenc}   % Кириллица в PDF файле
-\usepackage [utf8] {inputenc} % Кодировка текста: utf-8
+% \usepackage [utf8] {inputenc} % Кодировка текста: utf-8
 \usepackage [russian] {babel} % Переносы, лигатуры
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -104,8 +104,14 @@ Cтудента %студентки % Для курсовой: с большой
 
 % Гиперссылки: настройте внешний вид ссылок
 \usepackage%
-[pdftex,unicode,pdfborder=0,draft=false,%backref=page,
+% [pdftex,unicode,pdfborder=0,draft=false,%backref=page,
+%     hidelinks, % убрать, если хочется видеть ссылки: это
+%                % удобно в PDF файле, но не должно появиться на печати
+%     bookmarks=true,bookmarksnumbered=false,bookmarksopen=false]%
+% {hyperref}
+[unicode=true,pdfborder=0,draft=false,%backref=page,
     hidelinks, % убрать, если хочется видеть ссылки: это
                % удобно в PDF файле, но не должно появиться на печати
     bookmarks=true,bookmarksnumbered=false,bookmarksopen=false]%
 {hyperref}
+

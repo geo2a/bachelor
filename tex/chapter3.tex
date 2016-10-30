@@ -224,7 +224,13 @@ sat p = do
   порядка обработки эффектов этого вычисления. Это отражено в 
   типах функций~\lstinline{parse} и ~\lstinline{parse'}, приведённых в 
   листинге~\ref{listing:extEffparse}: в первой функции сначала обрабатывается 
-  эффект~\lstinline{Fail}, а потом эффект~\lstinline{State}, в результате,  
+  эффект~\lstinline{Fail}, а потом эффект~\lstinline{State}, в результате, 
+  значением функции является пара из последнего состояния парсера и, возможно 
+  отсутствующего, результата разбора. Такой парсер возвращает своё состояние в 
+  случае неудачного разбора. Во второй функции обработка эффектов 
+  производится в обратном порядке: сначала~\lstinline{State}, а потом~\lstinline{Fail}.
+  Это приводит к тому, что в случае неудачного разбора парсер не возвращает своего 
+  последнего состояния. 
 
   \begin{figure}[h]
   \begin{lstlisting}
@@ -234,7 +240,7 @@ parse p inp = run . runState inp . runFail $ p
 parse' :: Eff (State s :> (Fail :> Void)) w -> s -> Maybe (s, w)
 parse' p inp = run . runFail . runState inp $ p 
   \end{lstlisting}
-  \caption{Функция для запуска вычисления}
+  \caption{Функции для запуска вычислений}
   \label{listing:extEffparse}
   \end{figure}
 

@@ -4,9 +4,14 @@
 %%% Шрифты
 
 % если закомментировать всё — консервативная гарнитура Computer Modern
-\usepackage{paratype} % профессиональные свободные шрифты
+% \usepackage{paratype} % профессиональные свободные шрифты
+\usepackage{fontspec}
+ 
+\setmainfont[Ligatures=TeX]{Times New Roman}
+\setromanfont[Ligatures=TeX]{Times New Roman}
+\setsansfont[Ligatures=TeX]{Times New Roman}
+\setmonofont{Courier New}
 %\usepackage {droid}  % неплохие свободные шрифты от Google
-% \usepackage{mathptmx} % Times New Roman и друзья
 %\usepackage {mmasym}
 %\usepackage {psfonts}
 %\usepackage{lmodern}
