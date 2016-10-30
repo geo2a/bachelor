@@ -221,13 +221,17 @@ sat p = do
   Расширяемые эффекты, в отличие от трансформеров монад, позволяют определять 
   порядок на множестве эффектов при запуске вычисления, что позволяет, для 
   одного и того же вычисления, получить немного разное поведение, в зависимости от
-  порядка обработки эффектов этого вычисления. В листинге\ref{listing:extEffparse}
-  приведены две функции для запуска синтаксического анализа. 
+  порядка обработки эффектов этого вычисления. Это отражено в 
+  типах функций~\lstinline{parse} и ~\lstinline{parse'}, приведённых в 
+  листинге~\ref{listing:extEffparse}: в первой функции сначала обрабатывается 
+  эффект~\lstinline{Fail}, а потом эффект~\lstinline{State}, в результате,  
 
   \begin{figure}[h]
   \begin{lstlisting}
+parse :: Eff (Fail :> (State s :> Void)) a -> s -> (s, Maybe a)
 parse p inp = run . runState inp . runFail $ p
 
+parse' :: Eff (State s :> (Fail :> Void)) w -> s -> Maybe (s, w)
 parse' p inp = run . runFail . runState inp $ p 
   \end{lstlisting}
   \caption{Функция для запуска вычисления}
