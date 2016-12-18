@@ -1,0 +1,225 @@
+\chapter{Methods of parser construction}
+
+Consider a simple type to represent a parser (listing~\ref{listing:basicParserType}). 
+In this representation, parser is a
+function, taking input stream and returning a list of possible valid
+variants of analysis in conjunction with corresponding input stream 
+remains. Empty list of result stands for completely unsuccessful attempt of 
+parsing, whereas multiple results mean ambiguity.
+
+\begin{figure}[h]
+\begin{lstlisting}
+type Parser a = String -> [(a,String)]
+\end{lstlisting}
+\caption{Type of Parser}
+\label{listing:basicParserType}
+\end{figure}
+
+Types similar to $Parser a$ may be treated as effectful computation. In this 
+particular example, effect of non-determinism is exploited to express ambiguity 
+of parsing. To represent computations with effects a concept of Monad is used in 
+~\lstinline{Haskell} programming language. Comprehensive information about 
+properties of parsers like~\ref{listing:basicParserType} may be found in 
+paper~\cite{monParsing}.
+
+To extend capabilities and improve convenience of syntactic analysers set of 
+effects of parsers could be expanded: it is handy to run parsers in a configurable 
+environment or introduce logging. In this section two approaches to combination 
+of computational effects will be considered: monad transformers and extensible 
+effects.
+
+\section{Parser as a monad transformer stack}
+
+  Monad transformer is a concept which lets to enrich a given monad with a 
+  property of other monad. Multiple monad transformers may be combined 
+  together to form monad stack, that is, a monad possessing all properties of 
+  it's components.
+
+  Papers~\cite{monParsing} proposes a way of decomposition of type from 
+  listing~\ref{listing:basicParserType} into stack of two monads: state and list,
+  where the last one provides effect of non-determinism. Thus, type for parser 
+  takes a form introduced in listing~\ref{listing:monadStackParserType}.
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+  type Parser a = StateT String [] a
+  \end{lstlisting}
+  \caption{Parser as a simple monad stack}
+  \label{listing:monadStackParserType}
+  \end{figure}
+
+  Parser combinator library developed in this work uses following monad 
+  stack~\ref{listing:hugeMonadStackParserType}. This representation of a 
+  parsers also is parametrised with type of input stream. 
+  Types~\lstinline{ParserState} and~\lstinline{ErrorReport} are algebraic
+  data types for representing parser's state and possible analysis errors 
+  respectively.
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+  newtype Parser t a = Parser (
+      StateT (ParserState t) (Either (ErrorReport t)) a
+    ) deriving ( Functor, Applicative, Monad
+               , MonadState (ParserState t)
+               , MonadError (ErrorReport t)
+               )
+  \end{lstlisting}
+  \caption{Parser as a stack of two monads}
+  \label{listing:hugeMonadStackParserType}
+  \end{figure}
+
+  The most low-level primitive which serves as a basis for all parser combinators 
+  is a parser that consumes a single item from input stream 
+  (see listing~\ref{listing:mtlParsersItem}).
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+  item :: TM.TextualMonoid t => Parser t Char
+  item = do
+    state  <- get
+    let s = TM.splitCharacterPrefix . remainder $ state
+    case s of
+      Nothing -> throwError (EmptyRemainder "item",state)
+      Just (c,rest) -> do
+        let (c,rest) = fromJust s
+        put (ParserState {position = updatePos (position state) c, remainder = rest})
+        return c
+  \end{lstlisting}
+  \caption{Single input item consuming parser}
+  \label{listing:mtlParsersItem}
+  \end{figure}
+
+  Listings~\ref{listing:mtlParserSat} and~\ref{listing:mtlParserString}
+  contain two more parsers from developed library: conditional consumer and 
+  given string consumer.
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+  sat :: TM.TextualMonoid t => (Char -> Bool) -> Parser t Char
+  sat p = do
+    state <- get
+    x <- item `overrideError` (EmptyRemainder "sat")
+    if p x then return x else
+      throwError (UnsatisfiedPredicate "general",state)
+  \end{lstlisting}
+  \caption{}
+  \label{listing:mtlParserSat}
+  \end{figure}
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+  string :: TM.TextualMonoid t => String -> Parser t String
+  string s = do
+    state <- get
+    (mapM char s) `overrideError`
+      (UnsatisfiedPredicate ("string " ++ s))
+  \end{lstlisting}
+  \caption{}
+  \label{listing:mtlParserString}
+  \end{figure}  
+
+  To actually perform parsing, it's necessary to implement a function that 
+  ``runs'' a computation (listing~\ref{listing:mtlParseRun}). It's need to be
+  pointed out, that order of effect handling is statically encoded in type of 
+  monad stack. 
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+parse :: TM.TextualMonoid t =>
+  Parser t a -> t -> Either (ErrorReport t) (a,ParserState t)
+parse (Parser p) s =
+  runStateT p (ParserState {remainder = s, position = initPos})
+    where initPos = (1,1)
+  \end{lstlisting}
+  \caption{}
+  \label{listing:mtlParseRun}
+  \end{figure}
+
+  Overall, a concept of has a considerable convenience in programming due to 
+  its maturity and popularity. However, as it was discussed in section 1, this 
+  approach lacks flexibility, doesn't allow stacks with several homogeneous 
+  effects (for instance, multiple~\lstinline{StateT} transformers) without 
+  loosing automatic lifting (~\lstinline{lift}) and requires boilerplate 
+  typeclass instance declaration.
+
+  Next, different method of monadic parser combinators will be considered: one 
+  based on extensible effects --- an alternative framework of construction of 
+  effectful computation.
+
+\section{Parsers based on extensible effects}
+
+  Extensible effects, presented in paper~\cite{extEffects}, are an alternative 
+  to monad transformers approach to describing effectful computation.
+
+  An idea behind extensible effects, in a nutshell, is all about analogy between
+  client-server interaction and computational effects. Commands of code is about 
+  to produce some side-effect such as IO, exception, etc. have to send a 
+  \emph{request} for handling this effect to a special authority --- an effect 
+  manager. Request describes an action that should be performed alongside with 
+  a continuation.
+
+  Listing~\ref{listing:extEffItem} contains basic primitive of the library --- 
+  function that consumes a single item of input stream. Type annotation of this 
+  function declares effects performed by this function: fallible computation 
+  and presence of state. Let us take a closer view on this type annotation.
+  Constraint~\lstinline{Member Fail r} points out that set of effects~\lstinline{r}
+  must contain effect~\lstinline{Fail}, whereas type of return 
+  value~\lstinline{Eff r Char} tells that function~\lstinline{item} yields value
+  of type~\lstinline{Char} and may perform effects from set~\lstinline{r}. 
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+item :: ( Member Fail r
+        , Member (State String) r
+        ) => Eff r Char
+item = do
+  s <- get
+  case s of
+    [] -> die
+    (x:xs) -> put xs >> return x
+  \end{lstlisting}
+  \caption{Single input item consuming parser}
+  \label{listing:extEffItem}
+  \end{figure}
+
+  Generally, from syntactic point of view, declaration of combinators based on 
+  extensible effects is similar to regular monadic code. This is achieved by 
+  type~\lstinline{Eff r a} having an instance of~\lstinline{Monad} typeclass.
+  \lstinline{Eff r a} is a free monad constructed on top of functor~\lstinline{r}
+  which is a open union of effects. As long as~\lstinline{Eff r a} is a monad, 
+  regular monadic do-notation and applicative style become available.  
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+sat :: ( Member Fail r
+       , Member (State String) r
+       ) => (Char -> Bool) -> Eff r Char
+sat p = do
+  (s :: String) <- get
+  x <- item
+  if p x then return x else (put s >> die)
+  \end{lstlisting}
+  \label{listing:extEffSat}
+  \end{figure}
+
+  Extensible effects, in contrast to monad transformers, allow to set an order of 
+  effect handling just before running computation. Thus, same computation may 
+  produce different behaviour, controlled by order of effect application of 
+  handlers. For instance, in listing~\ref{listing:extEffparse} types of handlers 
+  ~\lstinline{parse} and~\lstinline{parse'} are different because~\lstinline{parse} 
+  handles~\lstinline{Fail} after~\lstinline{State} and yields pair of last occurred 
+  state and possibly missing result of parsing, i.e. saves last state with no respect 
+  to success of parsing. Conversely,~\lstinline{parse'} handles~\lstinline{State}
+  first and doesn't return any state in case of unsuccessful parsing.
+
+  \begin{figure}[h]
+  \begin{lstlisting}
+parse :: Eff (Fail :> (State s :> Void)) a -> s -> (s, Maybe a)
+parse p inp = run . runState inp . runFail $ p
+
+parse' :: Eff (State s :> (Fail :> Void)) w -> s -> Maybe (s, w)
+parse' p inp = run . runFail . runState inp $ p
+  \end{lstlisting}
+  \caption{Running parsers}
+  \label{listing:extEffparse}
+  \end{figure}
