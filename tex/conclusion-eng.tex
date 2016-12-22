@@ -1,0 +1,39 @@
+\chapter{Conclusion}
+
+\section{Main results achieved} 
+  
+  Following \textbf{results} have been achieved:
+
+  \begin{enumerate}
+
+    \item Parser combinator library based on monad transformers that uses special 
+    monoids for input stream representation has been developed. Source code of
+    library is available on GitHub~\cite{mdParse}.
+
+    \item Prototype of parser combinator library based on extensible effects has
+    been developed. Source code of library is available on GitHub~\cite{mdParse}.
+
+    \item Basing on library from point one, parser for subset of Markdown enriched 
+    with \LaTeX blocks has been built, together with~\lstinline{HTML} code generator. Source code of implementation and build instructions are also available on 
+    Github~\cite{mdParse}.   
+
+  \end{enumerate}
+
+  In addition, section 1.2 contains a comparative analysis of convenience of 
+  programming with two approaches to control of computational effects: monad
+  transformers and extensible effects.
+
+\section{Possible applications}
+
+  Developed libraries may be used for syntax analysis of markup and programming 
+  languages.
+
+  One possible application of Markdown with \LaTeX blocks parser is a electronic 
+  lecture notes system. 
+
+\section{Future research}
+  
+  Extensible effects is a implementation of abstractions of algebraic effects and 
+  effects handlers. These abstractions are in its infancy and it could be useful 
+  to perform an approbation of its implementations as a machinery for constructing  
+  parser combinators libraries.
