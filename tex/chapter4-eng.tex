@@ -3,29 +3,29 @@
 
 \lstinline{Markdown} is a lightweight language, widely used for small scale 
 writing. It comes in handy when regular markup languages such as 
-\lstinline{HTML} and \LaTeX are considered an overkill. \lstinline{Markdown}
-is popular in IT community, for instance it is extensively used on 
-\lstinline{GitHub}.
+\lstinline{HTML} and~\LaTeX~are considered an overkill.~\lstinline{Markdown}
+is popular in IT community, for instance it is extensively used on source code 
+repositories hosting web sites, like \lstinline{GitHub}~\cite{github}.
 
 \section{Markdown Syntax}
 
-  In contrast with \lstinline{HTML} or \lstinline{XML}, \lstinline{Markdown}
+  In contrast with~\lstinline{HTML} or~\lstinline{XML},~\lstinline{Markdown}
   doesn't have a standard. However, informal but comprehensive description of 
   syntax exists~\cite{markdownSyntax}. There are also several enhanced versions, 
-  such as, for example, \lstinline{GitHub Flavored Markdown}.
+  such as, for example,~\lstinline{GitHub Flavoured Markdown}~\cite{GFM}.
 
-  In this work a subset of \lstinline{Markdown} syntax is considered, 
+  In this work a subset of~\lstinline{Markdown} syntax is considered, 
   specifically headers, paragraphs, unordered lists and block quotes. In addition, 
-  source code may include \LaTeX-blocks with formulae.   
+  source code may include~\LaTeX-blocks with formulae.   
 
 \section{Parser}
 
-  \lstinline{Haskell} programming language is know for its rich type system. It
-  such gear as algebraic data types (ADTs), that could be exploited to conveniently 
-  express structure of abstract syntax tree (AST). Every 
-  \lstinline{Document} is a list of blocks. Now, 
-  \lstinline{Block} is a sum type, which means that each of its data constructors 
-  represents some \lstinline{Markdown}-block.     
+  \lstinline{Haskell} programming language is know for its rich type system. 
+  It provides facilities of algebraic data types (ADTs), that could be exploited 
+  to conveniently express structure of abstract syntax tree (AST). Every 
+  \lstinline{Document} is a list of blocks. Now, \lstinline{Block} is a sum type, 
+  which means that each of its data constructors represents some 
+  \lstinline{Markdown}-block.     
 
   \begin{figure}[t]
   \begin{lstlisting}
@@ -61,8 +61,8 @@ is popular in IT community, for instance it is extensively used on
   the sake of briefness.
 
   Implementation of \lstinline{Markdown} parsers heavily relies on base of 
-  combinators, that have been described in chapter 3. It won't be a redundant to
-  remind types of those combinators (see~\ref{listing:ParserCombinators}).   
+  combinators, that have been described in chapter 3. It won't be redundant to
+  remind types of those combinators (see listing~\ref{listing:ParserCombinators}).   
 
   \begin{figure}[h]
   \begin{lstlisting}
@@ -77,13 +77,11 @@ is popular in IT community, for instance it is extensively used on
   \end{figure}
 
   \begin{enumerate}
-    \item \lstinline{many} parses a list of tokens which satisfy its parameter.
-    \item \lstinline{sepby} parses a sequence of tokens which satisfy its second 
-    argument первому параметру и разделённых токенами, удовлетворяющими
-    его второму параметру.
-    \item Комбинатор \lstinline{bracket} распознаёт токены, удовлетворяющие его
-    третьему параметру и заключенные между токенами, удовлетворяющими первому и
-    третьему параметру соответственно.
+    \item \lstinline{many} parses a list of tokens which satisfy its argument.
+    \item \lstinline{sepby} parses a sequence of tokens which satisfy its first 
+    argument and separated by tokens which satisfy second one.
+    \item \lstinline{bracket} parses tokens which satisfies its third argument 
+    and enclosed by tokens which satisfy first and third one respectively.
   \end{enumerate}
 
   \begin{figure}[t]
@@ -109,11 +107,14 @@ is popular in IT community, for instance it is extensively used on
     p   <- many punctuation
     return . Monospace $ txt ++ p
   \end{lstlisting}
-  \caption{Распознавание строк из строчных элементов.}
+  \caption{Parsers of inline elements}
   \label{listing:MarkdownInline}
   \end{figure}
 
-  Получив возможность распознавать строки и строчные элементы, можно приступить к реализации парсеров для блоков. В листинге~\ref{listing:MarkdownHeader} представлен парсер для заголовка, а в листинге~\ref{listing:markdownUlist} --- для неупорядоченного списка, парсеры для остальных блоков описываются схожим образом. Здесь следует сделать замечание, что текущая версия парсера не поддерживает вложенные списки, оформляемые в \lstinline{Markdown} с помощью отступов.
+  Being able to to correctly parse both lines and inline elements, it's 
+  time to get to block parsers. Listing~\ref{listing:MarkdownHeader} contains 
+  parser for header and~\ref{listing:markdownUlist} for unordered list. Parsers 
+  for the rest of blocks may be constructed in a similar way.
 
   \begin{figure}[t]
   \begin{lstlisting}
@@ -123,7 +124,7 @@ is popular in IT community, for instance it is extensively used on
     text <- nonEmptyLine
     return $ Header (length hashes,text)
   \end{lstlisting}
-  \caption{Парсер для заголовка}
+  \caption{Parsers for header}
   \label{listing:MarkdownHeader}
   \end{figure}
 
@@ -137,16 +138,16 @@ is popular in IT community, for instance it is extensively used on
       bullet :: TM.TextualMonoid t => Parser t Char
       bullet = char '*' <|> char '+' <|> char '-' >>= return
   \end{lstlisting}
-  \caption{Парсер для неупорядоченного списка}
+  \caption{Parser for unordered list}
   \label{listing:markdownUlist}
   \end{figure}
 
-  \lstinline{Markdown} применяется также для электронного конспектирования и
-  оформления заданий. Полезным расширением грамматики \lstinline{Markdown}
-  являются вставки математических формул в формате \LaTeX. Требуется распознать
-  \LaTeX-блок и оставить его без изменений, чтобы при последующей генерации кода
-  по абстрактному синтаксическому дереву можно было отобразить его соответствующим
-  образом. Для этого служит парсер из листинга~\ref{listing:MarkdownLaTeX}.
+  \lstinline{Markdown} language is also used for making notes during lectures 
+  and talks, building documentation, and preparing assignments. Therefore, 
+  \LaTeX~blocks seem as a helpful enhancement of a language. There almost no 
+  additional work to be done here: it's needed to recognize a \LaTeX~block and 
+  leave its contents unmodified, so could be later treated properly 
+  by code generator.      
 
   \begin{figure}[h]
   \begin{lstlisting}
@@ -156,12 +157,12 @@ is popular in IT community, for instance it is extensively used on
     return . Paragraph . (: []) . NonEmpty . (: []) . Plain .
       (\x -> "$$" ++ x ++ "$$")
   \end{lstlisting}
-  \caption{Парсер \LaTeX-блоков}
+  \caption{Parser for \LaTeX-blocks}
   \label{listing:MarkdownLaTeX}
   \end{figure}
 
-  В листинге \ref{listing:MarkdownDoc} представлен парсер самого верхнего уровня,
-  служащий для распознавания \lstinline{Markdown}-документа как списка блоков.
+  Listing \ref{listing:MarkdownDoc} presents top-level parser for 
+  \lstinline{Markdown}-document as a list of blocks.
 
   \begin{figure}[h]
   \begin{lstlisting}
@@ -170,31 +171,25 @@ is popular in IT community, for instance it is extensively used on
     where block = blank <|> header <|> paragraph <|>
                   unorderdList <|> blockquote <|> blockMath
   \end{lstlisting}
-  \caption{Парсер, распознающий \lstinline{Markdown}-документ}
+  \caption{Top-level parser for \lstinline{Markdown}-document}
   \label{listing:MarkdownDoc}
   \end{figure}
 
-\section{Генерация HTML-кода}
+\section{HTML generation}
 
-  Имея абстрактное синтаксическое дерево \lstinline{Markdown}-документа можно
-  сгенерировать по нему исходный текст на любом требуемом языке разметки.
-  В качестве целевого был выбран язык разметри гипертекста \lstinline{HTML}, для рендеринга
-  \LaTeX-вставок используется \lstinline{JavaScript}-библиотека
-  \lstinline{MathJax}~\cite{mathJax}. Возможно построения генераторов и для
-  других языков разметки.
+  Having an AST, code in any markup language could be generated. In this work, 
+  \lstinline{HTML} has been chosen as a target language. One advantage of \lstinline{HTML} 
+  is possibility of use of \lstinline{JavaScript}-libraries,
+  such as \lstinline{MathJax}~\cite{mathJax} to render \LaTeX~blocks. 
 
-  Генерация кода происходит от общего к частному. Функция \lstinline{serialize}
-  генерирует код по списку блоков и конкатенирует результат. Генерация каждого
-  блока производится функцией \lstinline{genBlock}, которая соответствующим
-  образом обрабатывает все поддерживаемые виды блоков и генерирует нужный код.
-  Строки и строчные элементы генерируются функциями \lstinline{genLine} и
-  \lstinline{genInline} соответственно.
+  Code generation process follows structure of abstract syntactic tree: function
+  \lstinline{serialize} generated code for list of blocs and collapses result to
+  a single string. Every block type is handled by separate pattern matching clause 
+  of~\lstinline{genBlock} function. Equally for lines elements and function 
+  \lstinline{genLine}.
 
-  В листинге~\ref{listing:HTMLGen} представлен сокращённый кодогенератор, опущена,
-  для краткости, обработка некоторых блоков и строчных элементов, которая
-  происходит аналогично представленным. Этот код служит демонстрацией
-  выразительности, которая предоставляется сопоставлением с образцом и
-  алгебраическими типами данных.
+  Listing~\ref{listing:HTMLGen} displays simplified code generators: handlers 
+  for some items are omitted for compactness.  
 
   \begin{figure}[h]
   \begin{lstlisting}
@@ -221,8 +216,10 @@ is popular in IT community, for instance it is extensively used on
   genInline (Plain s) = s
   genInline (Monospace s) = "<code>" ++ s ++ "</code>"
   \end{lstlisting}
-  \caption{Генерация \lstinline{HTML}}
+  \caption{\lstinline{HTML} markup generation}
   \label{listing:HTMLGen}
   \end{figure}
 
-  Полный исходный код парсера \lstinline{Markdown}, кодогенератора, а также вспомогательной библиотеки комбинаторов парсеров доступен в репозитории~\cite{mdParse}.
+  This is, in brief, the process of~\lstinline{Markdown} parsing and \lstinline{HTML}
+  code generation. Full source codes of parsers and code generator may be found 
+  in~\lstinline{GitHub} repository~\cite{mdParse}.
